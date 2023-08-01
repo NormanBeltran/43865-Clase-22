@@ -9,7 +9,12 @@ from django.views.generic import CreateView
 from django.views.generic import UpdateView
 from django.views.generic import DetailView
 from django.views.generic import DeleteView
-# Create your views here.
+
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
+
 def index(request):
     return render(request, "aplicacion/base.html")
 
@@ -21,10 +26,12 @@ def estudiantes(request):
 def entregables(request):
     return render(request, "aplicacion/entregables.html")
 
+@login_required
 def cursos(request):
     ctx = {"cursos": Curso.objects.all() }
     return render(request, "aplicacion/cursos.html", ctx)
 
+@login_required
 def cursoForm(request):
     if request.method == "POST":                
         curso = Curso(nombre=request.POST['nombre'], comision=request.POST['comision'])
@@ -33,6 +40,7 @@ def cursoForm(request):
     
     return render(request, "aplicacion/cursoForm.html")
 
+@login_required
 def cursoForm2(request):
     if request.method == "POST":   
         miForm = CursoForm(request.POST)
@@ -47,9 +55,11 @@ def cursoForm2(request):
 
     return render(request, "aplicacion/cursoForm2.html", {"form":miForm})
 
+@login_required
 def buscarComision(request):
     return render(request, "aplicacion/buscarComision.html")
 
+@login_required
 def buscar2(request):
     if request.GET['comision']:
         comision = request.GET['comision']
@@ -61,10 +71,12 @@ def buscar2(request):
 
 
 #__________________________________
+@login_required
 def profesores(request):
     ctx = {'profesores': Profesor.objects.all() }
     return render(request, "aplicacion/profesores.html", ctx)
 
+@login_required
 def updateProfesor(request, id_profesor):
     profesor = Profesor.objects.get(id=id_profesor)
     if request.method == "POST":
@@ -83,11 +95,13 @@ def updateProfesor(request, id_profesor):
                                        'profesion':profesor.profesion})         
     return render(request, "aplicacion/profesorForm.html", {'form': miForm})   
 
+@login_required
 def deleteProfesor(request, id_profesor):
     profesor = Profesor.objects.get(id=id_profesor)
     profesor.delete()
     return redirect(reverse_lazy('profesores'))
 
+@login_required
 def createProfesor(request):    
     if request.method == "POST":
         miForm = ProfesorForm(request.POST)
@@ -110,22 +124,56 @@ def createProfesor(request):
 
 #______ Class Based View
 
-class EstudianteList(ListView):
+class EstudianteList(LoginRequiredMixin, ListView):
     model = Estudiante
 
-class EstudianteCreate(CreateView):
+class EstudianteCreate(LoginRequiredMixin, CreateView):
     model = Estudiante
     fields = ['nombre', 'apellido', 'email']
     success_url = reverse_lazy('estudiantes')
 
-class EstudianteDetail(DetailView):
+class EstudianteDetail(LoginRequiredMixin, DetailView):
     model = Estudiante
 
-class EstudianteUpdate(UpdateView):
+class EstudianteUpdate(LoginRequiredMixin, UpdateView):
     model = Estudiante
     fields = ['nombre', 'apellido', 'email']
     success_url = reverse_lazy('estudiantes')    
 
-class EstudianteDelete(DeleteView):
+class EstudianteDelete(LoginRequiredMixin, DeleteView):
     model = Estudiante
     success_url = reverse_lazy('estudiantes')    
+
+#____________ Login, Logout, Registracion
+# 
+
+def login_request(request):
+    if request.method == "POST":
+        miForm = AuthenticationForm(request, data=request.POST)
+        if miForm.is_valid():
+            usuario = miForm.cleaned_data.get('username')
+            clave = miForm.cleaned_data.get('password')
+            user = authenticate(username=usuario, password=clave)
+            if user is not None:
+                login(request, user)
+                return render(request, "aplicacion/base.html", {"mensaje": f"Bienvenido {usuario}"})
+            else:
+                return render(request, "aplicacion/login.html", {"form":miForm, "mensaje": "Datos Inválidos"})
+        else:    
+            return render(request, "aplicacion/login.html", {"form":miForm, "mensaje": "Datos Inválidos"})
+
+    miForm = AuthenticationForm()
+
+    return render(request, "aplicacion/login.html", {"form":miForm})    
+
+def register(request):
+    if request.method == 'POST':
+        form = RegistroUsuariosForm(request.POST) # UserCreationForm 
+        if form.is_valid():  # Si pasó la validación de Django
+            usuario = form.cleaned_data.get('username')
+            form.save()
+            return render(request, "aplicacion/base.html", {"mensaje":"Usuario Creado"})        
+    else:
+        form = RegistroUsuariosForm() # UserCreationForm 
+
+    return render(request, "aplicacion/registro.html", {"form": form})    

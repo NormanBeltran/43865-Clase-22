@@ -1,4 +1,6 @@
 from django import forms 
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 
 class CursoForm(forms.Form):
     nombre = forms.CharField(label="Nombre del Curso", max_length=50, required=True)
@@ -17,3 +19,13 @@ class ProfesorForm(forms.Form):
     apellido = forms.CharField(label="Apellido", max_length=50, required=True)
     email = forms.EmailField(label="Email")
     profesion = forms.CharField(label="Profesion", max_length=50, required=True)
+
+class RegistroUsuariosForm(UserCreationForm):
+    email = forms.EmailField(label="Email Usuario")
+    password1= forms.CharField(label="Contraseña", widget=forms.PasswordInput)
+    password2= forms.CharField(label="Confirmar Contraseña", widget=forms.PasswordInput)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password1', 'password2']
+        help_texts = {k:"" for k in fields}    
